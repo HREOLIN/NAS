@@ -1,0 +1,17 @@
+[Unit]
+Description=NAS Backend Demo Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/nas-backend
+Environment=GOCACHE=/opt/nas-backend/.gocache
+Environment=GOMODCACHE=/opt/nas-backend/.gomodcache
+ExecStart=/usr/local/go/bin/go run ./cmd/server
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target
+

@@ -78,6 +78,7 @@ docs/                        架构与开发文档
 
 - [架构说明](/C:/Users/19296/Documents/NAS/docs/architecture.md)
 - [开发文档](/C:/Users/19296/Documents/NAS/docs/development.md)
+- [Linux 虚拟机 Demo](/C:/Users/19296/Documents/NAS/docs/linux-vm-demo.md)
 
 ## 后续扩展建议
 
@@ -85,4 +86,3 @@ docs/                        架构与开发文档
 - 用真实 `iproute2 / bridge / bond / vlan` 替换网络模块的 C 适配逻辑
 - 用真实 `libvirt / qemu-kvm` 替换虚拟机模块的底层执行器
 - 把内存态状态替换为持久化数据库和宿主机 Agent
-
