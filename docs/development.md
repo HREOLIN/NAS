@@ -1,33 +1,28 @@
-# NAS Core Demo 开发文档
+# NAS 后端开发文档
 
-## 1. 技术选型
+## 1. 运行环境
 
-为了让 demo 在当前环境里即开即跑，这里刻意采用：
+当前 demo 依赖：
 
-- `Node.js 原生 http`
-- 原生 `ESM`
-- 原生前端 `HTML + CSS + JavaScript`
-- 零第三方依赖
+- `Go 1.22+`
+- `gcc`
+- `cgo`
 
-这样做的原因是：
-
-- 不依赖 `npm install`
-- 方便快速阅读
-- 方便后续迁移到任意正式框架
+这台机器已经具备 `go` 和 `gcc`，可以直接编译运行。
 
 ## 2. 启动方式
 
 ```bash
-node src/server.js
+go run ./cmd/server
 ```
 
-服务默认监听：
+默认监听：
 
-- `127.0.0.1:4000`
+- `127.0.0.1:8080`
 
-## 3. API 说明
+## 3. 接口说明
 
-### 基础接口
+### 健康与总览
 
 - `GET /api/health`
 - `GET /api/overview`
@@ -40,85 +35,129 @@ node src/server.js
 - `POST /api/recovery/restore-file`
 - `POST /api/recovery/rollback-volume`
 
+请求示例：
+
+```json
+{
+  "volume": "volume1",
+  "name": "nightly-snapshot"
+}
+```
+
 ### 网络配置
 
 - `GET /api/network`
 - `POST /api/network/apply`
 
+请求示例：
+
+```json
+{
+  "nicId": "eth0",
+  "mode": "static",
+  "ipv4": "192.168.10.30",
+  "mask": "255.255.255.0",
+  "gateway": "192.168.10.1",
+  "dns": ["223.5.5.5"],
+  "simulateFailure": false
+}
+```
+
 ### 虚拟机管理
 
 - `GET /api/vms`
 - `POST /api/vms`
-- `POST /api/vms/:id/power`
+- `POST /api/vms/{id}/power`
 
-## 4. 状态与任务流转
+创建 VM 请求示例：
 
-任务状态：
+```json
+{
+  "name": "analytics-node",
+  "cpu": 4,
+  "memoryGb": 8,
+  "diskGb": 120,
+  "networkId": "eth0",
+  "template": "Rocky Linux 9 Base"
+}
+```
 
-- `queued`
-- `running`
-- `success`
-- `failed`
-- `rolled_back`
+电源操作请求示例：
 
-每个任务都包含：
+```json
+{
+  "action": "start"
+}
+```
 
-- `id`
-- `module`
-- `action`
-- `status`
-- `progress`
-- `steps`
-- `startedAt`
-- `endedAt`
+## 4. 代码结构说明
 
-## 5. 模块扩展建议
+### `cmd/server`
 
-### RecoveryService
+启动入口，负责启动 HTTP 服务。
 
-后续可以增加：
+### `internal/app`
 
-- 备份恢复
-- 异机恢复
-- 恢复演练
-- 结果校验器
+负责组装 Store、TaskEngine、Service 和 HTTP 路由。
 
-### NetworkService
+### `internal/core`
 
-后续可以增加：
+负责：
 
-- VLAN
-- Bond / LACP
-- Bridge
-- MTU
-- 静态路由
-- IPv6
+- 任务引擎
+- 状态存储
+- 通用数据模型
 
-### VMService
+### `internal/modules`
 
-后续可以增加：
+负责具体业务模块：
 
-- VM 模板
-- VM 快照
-- VM 克隆
-- 镜像导入导出
-- PCIe / GPU 直通
+- `recovery`
+- `network`
+- `vm`
 
-## 6. 适合继续演进的方式
+### `internal/native`
 
-如果你后续准备做正式项目，建议这么迁移：
+负责：
 
-1. 先保留当前领域边界
-2. 把内存态 Store 替换为数据库
-3. 把服务里的模拟动作替换为真实系统适配器
-4. 把任务引擎改成可持久化任务队列
-5. 再补认证、权限、监控、告警
+- C 头文件
+- C 实现
+- cgo 包装
 
-## 7. 推荐下一步
+## 5. 继续开发建议
 
-最适合继续往下做的是：
+建议下一阶段按这个顺序做：
 
-1. 给 `NetworkService` 增加真实 bridge / vlan 配置适配器
-2. 给 `RecoveryService` 增加快照浏览和恢复点差异展示
-3. 给 `VMService` 接入 `libvirt`
+1. 把 `network` 模块替换为真实 Linux 网络配置适配器
+2. 给 `recovery` 模块增加备份恢复和恢复校验
+3. 给 `vm` 模块接入 `libvirt`
+4. 把当前同步任务引擎改为可持久化异步任务系统
+
+## 6. 风险点
+
+### 网络模块
+
+最容易把设备配失联，所以必须长期坚持：
+
+- 先校验
+- 后应用
+- 再探活
+- 失败回滚
+
+### 恢复模块
+
+不能只关注“恢复成功”，还要关注：
+
+- 恢复前影响分析
+- 恢复后校验
+- 审计记录
+
+### VM 模块
+
+不能只完成创建和启动，还要注意：
+
+- 资源竞争
+- 存储映射
+- 网络绑定
+- 电源状态一致性
 
