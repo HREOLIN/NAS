@@ -12,7 +12,11 @@
 
 ## 2. 启动方式
 
-```bash
+建议在当前 Windows 环境下把 Go 缓存放到仓库目录，避免系统缓存目录权限问题：
+
+```powershell
+$env:GOCACHE="C:\Users\19296\Documents\NAS\.gocache"
+$env:GOMODCACHE="C:\Users\19296\Documents\NAS\.gomodcache"
 go run ./cmd/server
 ```
 
@@ -62,6 +66,16 @@ go run ./cmd/server
   "simulateFailure": false
 }
 ```
+
+返回任务状态可能是：
+
+- `success`
+- `failed`
+- `rolled_back`
+
+说明：
+
+- 当前网络模块采用“任务成功但状态已回滚”的设计，所以模拟失败场景会返回 `rolled_back`，而不是一定返回 HTTP 失败。
 
 ### 虚拟机管理
 
@@ -124,7 +138,36 @@ go run ./cmd/server
 - C 实现
 - cgo 包装
 
-## 5. 继续开发建议
+## 5. Network 模块设计说明
+
+当前 `network` 模块已经不是简单地“改几个字段”，而是拆成了更接近真实 NAS 的后端执行流程：
+
+1. 业务层接收请求并做参数校验
+2. 生成目标网络配置
+3. 基于当前配置生成执行计划
+4. 基于当前配置生成回滚计划
+5. 调用 native 执行器执行
+6. 执行后做连通性探测
+7. 探测失败则回滚
+
+当前 native 层仍是演示实现，但接口设计已经适合后续替换为 Linux 真实命令执行器。
+
+## 6. 如何替换为 Linux 真实网络执行器
+
+建议后续把 `internal/native` 里的网络相关实现替换为：
+
+- `ip addr`
+- `ip route`
+- `bridge`
+- `nmcli` 或 systemd-networkd 配置生成
+
+比较稳的演进方式：
+
+1. 先保留当前 Go 层计划生成逻辑
+2. 仅替换 C 层或 Go 层的 native 执行器
+3. 保持“执行计划 + 回滚计划 + 探活”的流程不变
+
+## 7. 继续开发建议
 
 建议下一阶段按这个顺序做：
 
@@ -133,7 +176,7 @@ go run ./cmd/server
 3. 给 `vm` 模块接入 `libvirt`
 4. 把当前同步任务引擎改为可持久化异步任务系统
 
-## 6. 风险点
+## 8. 风险点
 
 ### 网络模块
 

@@ -9,6 +9,7 @@ import "C"
 
 import (
 	"fmt"
+	"strings"
 	"unsafe"
 )
 
@@ -47,15 +48,15 @@ func RollbackVolume(snapshotID, volume string) (string, error) {
 	})
 }
 
-func ApplyNetworkProfile(nicID, mode, ipv4, gateway string, simulateFailure bool) (string, error) {
+func ApplyNetworkProfile(platform, nicID string, commands, probeTargets []string, simulateFailure bool) (string, error) {
+	cPlatform := C.CString(platform)
 	cNic := C.CString(nicID)
-	cMode := C.CString(mode)
-	cIPv4 := C.CString(ipv4)
-	cGateway := C.CString(gateway)
+	cCommands := C.CString(strings.Join(commands, " && "))
+	cProbes := C.CString(strings.Join(probeTargets, ","))
+	defer C.free(unsafe.Pointer(cPlatform))
 	defer C.free(unsafe.Pointer(cNic))
-	defer C.free(unsafe.Pointer(cMode))
-	defer C.free(unsafe.Pointer(cIPv4))
-	defer C.free(unsafe.Pointer(cGateway))
+	defer C.free(unsafe.Pointer(cCommands))
+	defer C.free(unsafe.Pointer(cProbes))
 
 	var failure C.int
 	if simulateFailure {
@@ -63,7 +64,7 @@ func ApplyNetworkProfile(nicID, mode, ipv4, gateway string, simulateFailure bool
 	}
 
 	return call(func(buffer *C.char, length C.int) C.int {
-		return C.nas_network_apply_profile(cNic, cMode, cIPv4, cGateway, failure, buffer, length)
+		return C.nas_network_apply_profile(cPlatform, cNic, cCommands, cProbes, failure, buffer, length)
 	})
 }
 

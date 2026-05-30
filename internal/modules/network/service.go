@@ -1,8 +1,10 @@
 package network
 
 import (
+	"fmt"
 	"net"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/HREOLIN/NAS/internal/core/store"
@@ -70,7 +72,7 @@ func (s *Service) ApplyProfile(req ApplyProfileRequest) (*store.Task, int) {
 		})
 
 		ctx.Step("backup-config", "Backup current network profile")
-		ctx.Step("apply-config", "Apply new interface config")
+		ctx.Step("build-plan", "Build network execution and rollback plan")
 
 		current.Mode = req.Mode
 		if req.Mode == "dhcp" {
@@ -85,10 +87,25 @@ func (s *Service) ApplyProfile(req ApplyProfileRequest) (*store.Task, int) {
 			current.DNS = cloneStrings(req.DNS)
 		}
 
-		detail, err := native.ApplyNetworkProfile(req.NicID, req.Mode, current.IPv4, current.Gateway, req.SimulateFailure)
+		target := InterfaceProfile{
+			NicID:   current.ID,
+			Mode:    current.Mode,
+			IPv4:    current.IPv4,
+			Mask:    current.Mask,
+			Gateway: current.Gateway,
+			DNS: DNSConfig{
+				Servers: cloneStrings(current.DNS),
+			},
+		}
+
+		plan := buildExecutionPlan(before, target)
+		ctx.Step("apply-config", fmt.Sprintf("Apply %d network commands", len(plan.Commands)))
+
+		detail, err := native.ApplyNetworkProfile(plan.Platform, plan.InterfaceID, plan.Commands, plan.ProbeTargets, req.SimulateFailure)
 		if err != nil {
+			ctx.Step("probe-connectivity", "Connectivity check failed")
+			ctx.Step("rollback", fmt.Sprintf("Execute %d rollback commands", len(plan.RollbackCommands)))
 			_ = s.store.UpdateInterface(before)
-			ctx.Step("rollback", "Rollback to previous network profile")
 			return nil, ctx.Fail(err.Error(), true)
 		}
 
@@ -96,9 +113,13 @@ func (s *Service) ApplyProfile(req ApplyProfileRequest) (*store.Task, int) {
 			return nil, ctx.Fail("failed to update network state", false)
 		}
 
-		ctx.Step("probe-connectivity", detail)
+		ctx.Step("probe-connectivity", fmt.Sprintf("Probe targets: %v", plan.ProbeTargets))
 		ctx.Step("confirm", "Confirm management path healthy")
-		return current, nil
+		return ApplyResult{
+			Profile: target,
+			Plan:    plan,
+			Detail:  detail,
+		}, nil
 	})
 
 	return taskResult, statusCode(taskResult)
@@ -123,6 +144,51 @@ func validate(req ApplyProfileRequest) error {
 		}
 	}
 	return nil
+}
+
+func buildExecutionPlan(before store.NetworkInterface, target InterfaceProfile) ExecutionPlan {
+	platform := runtime.GOOS
+	if platform != "linux" {
+		platform = "mock-" + platform
+	}
+
+	commands := []string{}
+	rollback := []string{}
+
+	if target.Mode == "dhcp" {
+		commands = append(commands,
+			fmt.Sprintf("ip addr flush dev %s", target.NicID),
+			fmt.Sprintf("dhclient %s", target.NicID),
+		)
+	} else {
+		commands = append(commands,
+			fmt.Sprintf("ip addr flush dev %s", target.NicID),
+			fmt.Sprintf("ip addr add %s/24 dev %s", target.IPv4, target.NicID),
+			fmt.Sprintf("ip route replace default via %s dev %s", target.Gateway, target.NicID),
+		)
+	}
+
+	rollback = append(rollback,
+		fmt.Sprintf("ip addr flush dev %s", before.ID),
+		fmt.Sprintf("ip addr add %s/24 dev %s", before.IPv4, before.ID),
+		fmt.Sprintf("ip route replace default via %s dev %s", before.Gateway, before.ID),
+	)
+
+	probes := []string{}
+	if target.Gateway != "" {
+		probes = append(probes, target.Gateway)
+	}
+	if len(target.DNS.Servers) > 0 {
+		probes = append(probes, target.DNS.Servers...)
+	}
+
+	return ExecutionPlan{
+		Platform:         platform,
+		InterfaceID:      target.NicID,
+		Commands:         commands,
+		ProbeTargets:     probes,
+		RollbackCommands: rollback,
+	}
 }
 
 func statusCode(task *store.Task) int {
