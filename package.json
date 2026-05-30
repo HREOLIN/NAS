@@ -1,0 +1,11 @@
+{
+  "name": "nas-core-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zero-dependency NAS core capability demo",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js"
+  }
+}
+
