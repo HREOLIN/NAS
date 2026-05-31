@@ -186,6 +186,11 @@
   },
   "active": "01351c3dd5774990",
   "lastOpenFiles": [
+    "examples/http-api-demo.http",
+    "examples",
+    "scripts/demo-http-api.sh",
+    "docs/http-api-demo.md",
+    "README.md",
     "docs/architecture.md"
   ]
 }

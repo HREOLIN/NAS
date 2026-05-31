@@ -1,0 +1,68 @@
+### health
+GET http://127.0.0.1:8080/api/health
+
+### overview
+GET http://127.0.0.1:8080/api/overview
+
+### recovery summary
+GET http://127.0.0.1:8080/api/recovery
+
+### create snapshot
+POST http://127.0.0.1:8080/api/recovery/snapshots
+Content-Type: application/json
+
+{
+  "volume": "volume1",
+  "name": "http-client-snapshot"
+}
+
+### restore file
+POST http://127.0.0.1:8080/api/recovery/restore-file
+Content-Type: application/json
+
+{
+  "snapshotId": "snap-system-001",
+  "sourcePath": "/srv/nas/team/roadmap.xlsx",
+  "targetPath": "/srv/nas/restore/roadmap.xlsx"
+}
+
+### network summary
+GET http://127.0.0.1:8080/api/network
+
+### apply network profile
+POST http://127.0.0.1:8080/api/network/apply
+Content-Type: application/json
+
+{
+  "nicId": "eth0",
+  "mode": "static",
+  "ipv4": "192.168.10.40",
+  "mask": "255.255.255.0",
+  "gateway": "192.168.10.1",
+  "dns": ["223.5.5.5", "1.1.1.1"],
+  "simulateFailure": false
+}
+
+### create vm
+POST http://127.0.0.1:8080/api/vms
+Content-Type: application/json
+
+{
+  "name": "http-client-vm",
+  "cpu": 2,
+  "memoryGb": 4,
+  "diskGb": 50,
+  "networkId": "eth0",
+  "template": "Ubuntu 24.04 Base"
+}
+
+### power vm
+POST http://127.0.0.1:8080/api/vms/vm-demo-001/power
+Content-Type: application/json
+
+{
+  "action": "start"
+}
+
+### tasks
+GET http://127.0.0.1:8080/api/tasks
