@@ -54,6 +54,12 @@ go run ./cmd/server
 - 执行计划生成
 - 探活与自动回滚演示
 
+### 磁盘与存储
+
+- 获取磁盘配置
+- 获取卷配置
+- 为后续恢复、扩容、迁移类 API 提供基线
+
 ### 虚拟机管理
 
 - 获取 VM 列表
@@ -85,6 +91,7 @@ deploy/                      部署文件
 - `POST /api/recovery/rollback-volume`
 - `GET /api/network`
 - `POST /api/network/apply`
+- `GET /api/storage`
 - `GET /api/vms`
 - `POST /api/vms`
 - `POST /api/vms/{id}/power`
@@ -102,4 +109,3 @@ deploy/                      部署文件
 - 用真实 `iproute2 / bridge / bond / vlan` 替换网络模块的适配逻辑
 - 用真实 `libvirt / qemu-kvm` 替换虚拟机模块的底层执行器
 - 把内存态状态替换为持久化数据库和宿主机 Agent
-

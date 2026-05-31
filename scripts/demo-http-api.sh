@@ -9,6 +9,16 @@ curl -s "${BASE_URL}/api/overview"
 echo
 echo
 
+echo "== network summary =="
+curl -s "${BASE_URL}/api/network"
+echo
+echo
+
+echo "== storage summary =="
+curl -s "${BASE_URL}/api/storage"
+echo
+echo
+
 echo "== recovery summary =="
 curl -s "${BASE_URL}/api/recovery"
 echo
@@ -70,4 +80,3 @@ fi
 echo "== task center =="
 curl -s "${BASE_URL}/api/tasks"
 echo
-

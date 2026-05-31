@@ -64,6 +64,26 @@ type NetworkHistory struct {
 	Before NetworkInterface `json:"before"`
 }
 
+type Disk struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	SizeGB     int    `json:"sizeGb"`
+	FileSystem string `json:"fileSystem"`
+	MountPoint string `json:"mountPoint"`
+	Health     string `json:"health"`
+	Role       string `json:"role"`
+}
+
+type Volume struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	FileSystem string `json:"fileSystem"`
+	MountPoint string `json:"mountPoint"`
+	UsedGB     int    `json:"usedGb"`
+	TotalGB    int    `json:"totalGb"`
+	Raid       string `json:"raid"`
+}
+
 type VMTemplate struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -90,6 +110,8 @@ type Store struct {
 	recoveries []RecoveryRecord
 	interfaces []NetworkInterface
 	history    []NetworkHistory
+	disks      []Disk
+	volumes    []Volume
 	templates  []VMTemplate
 	vms        []VM
 }
@@ -135,6 +157,46 @@ func New() *Store {
 				DNS:     []string{"223.5.5.5"},
 				Link:    "standby",
 				Bridge:  "",
+			},
+		},
+		disks: []Disk{
+			{
+				ID:         "disk-001",
+				Name:       "/dev/sda",
+				SizeGB:     512,
+				FileSystem: "ext4",
+				MountPoint: "/",
+				Health:     "healthy",
+				Role:       "system",
+			},
+			{
+				ID:         "disk-002",
+				Name:       "/dev/sdb",
+				SizeGB:     1024,
+				FileSystem: "btrfs",
+				MountPoint: "/srv/nas",
+				Health:     "healthy",
+				Role:       "data",
+			},
+		},
+		volumes: []Volume{
+			{
+				ID:         "volume1",
+				Name:       "system-volume",
+				FileSystem: "ext4",
+				MountPoint: "/",
+				UsedGB:     42,
+				TotalGB:    512,
+				Raid:       "single",
+			},
+			{
+				ID:         "volume2",
+				Name:       "nas-data",
+				FileSystem: "btrfs",
+				MountPoint: "/srv/nas",
+				UsedGB:     318,
+				TotalGB:    1024,
+				Raid:       "single",
 			},
 		},
 		templates: []VMTemplate{
@@ -251,6 +313,22 @@ func (s *Store) GetHistory() []NetworkHistory {
 	defer s.mu.RUnlock()
 	out := make([]NetworkHistory, len(s.history))
 	copy(out, s.history)
+	return out
+}
+
+func (s *Store) GetDisks() []Disk {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]Disk, len(s.disks))
+	copy(out, s.disks)
+	return out
+}
+
+func (s *Store) GetVolumes() []Volume {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]Volume, len(s.volumes))
+	copy(out, s.volumes)
 	return out
 }
 

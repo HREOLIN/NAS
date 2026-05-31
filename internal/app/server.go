@@ -9,6 +9,7 @@ import (
 	"github.com/HREOLIN/NAS/internal/core/task"
 	"github.com/HREOLIN/NAS/internal/modules/network"
 	"github.com/HREOLIN/NAS/internal/modules/recovery"
+	"github.com/HREOLIN/NAS/internal/modules/storage"
 	"github.com/HREOLIN/NAS/internal/modules/vm"
 )
 
@@ -17,6 +18,7 @@ type Server struct {
 	state           *store.Store
 	recoveryService *recovery.Service
 	networkService  *network.Service
+	storageService  *storage.Service
 	vmService       *vm.Service
 }
 
@@ -29,6 +31,7 @@ func NewServer(addr string) *http.Server {
 		state:           state,
 		recoveryService: recovery.NewService(state, engine),
 		networkService:  network.NewService(state, engine),
+		storageService:  storage.NewService(state),
 		vmService:       vm.NewService(state, engine),
 	}
 
@@ -50,6 +53,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/api/recovery/rollback-volume", s.handleRollbackVolume)
 	s.mux.HandleFunc("/api/network", s.handleNetwork)
 	s.mux.HandleFunc("/api/network/apply", s.handleApplyNetwork)
+	s.mux.HandleFunc("/api/storage", s.handleStorage)
 	s.mux.HandleFunc("/api/vms", s.handleVMs)
 	s.mux.HandleFunc("/api/vms/", s.handleVMPower)
 }
@@ -68,6 +72,8 @@ func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
 			"snapshots":   len(s.state.GetSnapshots()),
 			"recoveries":  len(s.state.GetRecoveries()),
 			"interfaces":  len(s.state.GetInterfaces()),
+			"disks":       len(s.state.GetDisks()),
+			"volumes":     len(s.state.GetVolumes()),
 			"runningVms":  s.state.CountRunningVMs(),
 			"totalVms":    len(s.state.GetVMs()),
 			"tasks":       len(s.state.GetTasks()),
@@ -150,6 +156,14 @@ func (s *Server) handleApplyNetwork(w http.ResponseWriter, r *http.Request) {
 	}
 	task, status := s.networkService.ApplyProfile(req)
 	writeJSON(w, status, task)
+}
+
+func (s *Server) handleStorage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"message": "method not allowed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.storageService.Summary())
 }
 
 func (s *Server) handleVMs(w http.ResponseWriter, r *http.Request) {

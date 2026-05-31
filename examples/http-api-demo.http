@@ -29,6 +29,9 @@ Content-Type: application/json
 ### network summary
 GET http://127.0.0.1:8080/api/network
 
+### storage summary
+GET http://127.0.0.1:8080/api/storage
+
 ### apply network profile
 POST http://127.0.0.1:8080/api/network/apply
 Content-Type: application/json
