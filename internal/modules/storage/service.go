@@ -21,4 +21,3 @@ func (s *Service) Summary() SummaryResponse {
 		Volumes: s.store.GetVolumes(),
 	}
 }
-
